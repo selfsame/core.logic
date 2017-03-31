@@ -7,7 +7,7 @@
     (fall-back-to-executor-services))"
   [exp then else]
   (if (try (eval exp)
-           (catch Throwable _ false))
+           (catch Exception _ false))
     `(do ~then)
     `(do ~else)))
 

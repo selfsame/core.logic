@@ -3,15 +3,15 @@
   (:use [clojure.core.logic.protocols])
   (:require [clojure.set :as set]
             [clojure.string :as string])
-  (:import [java.io Writer]
-           [java.util UUID]
+  (:import [System.IO TextWriter]
+           [System Guid]
            [clojure.core.logic.protocols
             IBindable ITreeTerm IVar ITreeConstraint INonStorable]))
 
 (defmacro ^:private compile-when
   ([exp then]
      (if (try (eval exp)
-              (catch Throwable _ false))
+              (catch Exception _ false))
        `(do ~then))))
 
 (def ^{:dynamic true} *locals*)
@@ -20,6 +20,10 @@
 
 ;; =============================================================================
 ;; Utilities
+
+(defn same-type? [a b] 
+  ;(.IsInstanceOfType (.GetType a) b)
+  (.IsAssignableFrom (.GetType a) (.GetType b)))
 
 (defn assoc-meta [x k v]
   (with-meta x (assoc (meta x) k v)))
@@ -57,21 +61,21 @@
   (nth [_ i] (case i
                    0 lhs
                    1 rhs
-                   (throw (IndexOutOfBoundsException.))))
+                   (throw (Exception. "IndexOutOfBoundsException"))))
   (nth [_ i not-found] (case i
                              0 lhs
                              1 rhs
                              not-found))
 
-  java.util.Map$Entry
-  (getKey [_] lhs)
-  (getValue [_] rhs)
+  clojure.lang.IMapEntry ;;java.util.Map$Entry
+  (key [_] lhs)          ;;getKey
+  (val [_] rhs)          ;;getValue
 
   Object
-  (toString [_]
+  (ToString [_]
     (str "(" lhs " . " rhs ")"))
 
-  (equals [_ o]
+  (Equals [_ o]
     (if (instance? Pair o)
       (and (= lhs (:lhs o))
            (= rhs (:rhs o)))
@@ -80,8 +84,8 @@
 (defn pair [lhs rhs]
   (Pair. lhs rhs))
 
-(defmethod print-method Pair [x ^Writer writer]
-  (.write writer (str "(" (:lhs x) " . " (:rhs x) ")")))
+(defmethod print-method Pair [x ^System.IO.TextWriter writer]
+  (.Write writer (str "(" (:lhs x) " . " (:rhs x) ")")))
 
 ;; =============================================================================
 ;; Constraint Store
@@ -177,7 +181,7 @@
 
 (defn add-var [cs x c]
   (when-not (lvar? x)
-    (throw (Error. (str "constraint store assoc expected logic var key: " x))))
+    (throw (Exception. (str "constraint store assoc expected logic var key: " x))))
   (let [cm (:cm cs)
         km (:km cs)
         cid (:cid cs)
@@ -196,7 +200,7 @@
 
 (defrecord SubstValue [v doms eset]
   Object
-  (toString [_]
+  (ToString [_]
     (str v)))
 
 (defn subst-val? [x]
@@ -286,15 +290,15 @@
 
 (deftype Substitutions [s vs ts cs cq cqs oc _meta]
   Object
-  (equals [this o]
+  (Equals [this o]
     (or (identical? this o)
-        (and (.. this getClass (isInstance o))
+        (and (same-type? this o);(.. this getClass (isInstance o))
              (= s (:s o)))))
   ;; TODO: prn doesn't work anymore on empty-s, why not?
-  (toString [_] (str s))
+  (ToString [_] (str s))
 
   clojure.lang.Counted
-  (count [this] (count s))
+  (clojure.lang.Counted.count [this] (count s) )
 
   clojure.lang.IObj
   (meta [this] _meta)
@@ -322,7 +326,7 @@
       (throw (Exception. (str "key must be a logic var")))))
   (empty [this] empty-s)
   (equiv [this o]
-    (.equals this o))
+    (.Equals this o))
 
   clojure.lang.Associative
   (containsKey [this k]
@@ -637,16 +641,16 @@
     (LVar. id unique name oname hash new-meta))
 
   Object
-  (toString [_] (str "<lvar:" name ">"))
+  (ToString [_] (str "<lvar:" name ">"))
 
-  (equals [this o]
+  (Equals [this o]
     (if (instance? IVar o)
       (if unique
         (identical? id (:id o))
         (identical? name (:name o)))
       false))
 
-  (hashCode [_] hash)
+  (GetHashCode [_] hash)
 
   IUnifyTerms
   (unify-terms [u v s]
@@ -707,7 +711,7 @@
   ([]
      (let [id (. clojure.lang.RT (nextID))
            name (str id)]
-       (LVar. id true name nil (.hashCode name) nil)))
+       (LVar. id true name nil (.GetHashCode name) nil)))
   ([name]
      (lvar name true))
   ([name unique]
@@ -718,10 +722,10 @@
            name (if unique
                   (str name "__" id)
                   (str name))]
-       (LVar. id unique name oname (.hashCode name) nil))))
+       (LVar. id unique name oname (.GetHashCode name) nil))))
 
-(defmethod print-method LVar [x ^Writer writer]
-  (.write writer (str "<lvar:" (:name x) ">")))
+(defmethod print-method LVar [x ^System.IO.TextWriter writer]
+  (.Write writer (str "<lvar:" (:name x) ">")))
 
 (defn lvar? [x]
   (instance? IVar x))
@@ -767,18 +771,19 @@
   LConsPrint
   (toShortString [this]
     (cond
-     (.. this getClass (isInstance d)) (str a " " (toShortString d))
+     ;(.. this getClass (isInstance d))
+     (same-type? this d) (str a " " (toShortString d))
      :else (str a " . " d )))
 
   Object
-  (toString [this] (cond
-                    (.. this getClass (isInstance d))
+  (ToString [this] (cond
+                    (same-type? this d) ;(.. this getClass (isInstance d))
                       (str "(" a " " (toShortString d) ")")
                     :else (str "(" a " . " d ")")))
 
-  (equals [this o]
+  (Equals [this o]
     (or (identical? this o)
-        (and (.. this getClass (isInstance o))
+        (and (same-type? this d) ;(.. this getClass (isInstance o))
              (loop [me this
                     you o]
                (cond
@@ -794,7 +799,7 @@
                          (recur (lnext me) (lnext you))))
                 :else (= me you))))))
 
-  (hashCode [this]
+  (GetHashCode [this]
     (if (clojure.core/== cache -1)
       (do
         (set! cache (uai (umi (int 31) (clojure.lang.Util/hash d))
@@ -862,8 +867,8 @@
         (recur (lnext u) (build s (lfirst u)))
         (build s u)))))
 
-(defmethod print-method LCons [x ^Writer writer]
-  (.write writer (str x)))
+(defmethod print-method LCons [x ^System.IO.TextWriter writer]
+  (.Write writer (str x)))
 
 (defn lcons
   "Constructs a sequence a with an improper tail d if d is a logic variable."
@@ -1817,7 +1822,7 @@
 
 (deftype AnswerCache [ansl anss _meta]
   Object
-  (toString [this]
+  (ToString [this]
     (str "<answer-cache:" (pr-str ansl) ">"))
 
   clojure.lang.IObj
@@ -1843,8 +1848,8 @@
 
 (defn answer-cache [] (AnswerCache. () #{} nil))
 
-(defmethod print-method AnswerCache [x ^Writer writer]
-  (.write writer (str x)))
+(defmethod print-method AnswerCache [x ^System.IO.TextWriter writer]
+  (.Write writer (str x)))
 
 (defrecord SuspendedStream [cache ansv* f]
   ISuspendedStream
@@ -1998,7 +2003,7 @@
   "Macro for defining a tabled goal. Prefer ^:tabled with the
   defne/a/u forms over using this directly."
   [args & grest]
-  (let [uuid (symbol (str "tabled-" (UUID/randomUUID)))]
+  (let [uuid (symbol (str "tabled-" (System.Guid/NewGuid)))]
     `(fn ~uuid [~@args]
        (let [argv# ~args]
          (fn [a#]

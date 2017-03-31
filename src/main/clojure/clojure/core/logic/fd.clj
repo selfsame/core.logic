@@ -4,8 +4,9 @@
         [clojure.core.logic :exclude [get-dom == != !=c] :as l])
   (:require [clojure.set :as set]
             [clojure.string :as string])
-  (:import [java.io Writer]
-           [java.util UUID]
+  (:import [System]
+           [System.IO TextWriter]
+           [System Guid]
            [clojure.core.logic.protocols IEnforceableConstraint]))
 
 (alias 'core 'clojure.core)
@@ -63,7 +64,7 @@
 
 (deftype FiniteDomain [s min max]
   Object
-  (equals [this that]
+  (Equals [this that]
     (if (finite-domain? that)
       (if (= (-member-count this) (-member-count that))
         (= s (:s that))
@@ -161,8 +162,8 @@
     (when (seq args)
       (sorted-set->domain (into (sorted-set) args)))))
 
-(defmethod print-method FiniteDomain [x ^Writer writer]
-  (.write writer (str "<domain:" (string/join " " (seq (:s x))) ">")))
+(defmethod print-method FiniteDomain [x ^TextWriter writer]
+  (.Write writer (str "<domain:" (string/join " " (seq (:s x))) ">")))
 
 (declare interval?)
 
@@ -212,11 +213,11 @@
      (~'-intervals [this#]
        (list this#))))
 
-(extend-to-fd java.lang.Byte)
-(extend-to-fd java.lang.Short)
-(extend-to-fd java.lang.Integer)
-(extend-to-fd java.lang.Long)
-(extend-to-fd java.math.BigInteger)
+;(extend-to-fd System.Byte)
+;(extend-to-fd System.Int16)
+;(extend-to-fd System.Int32)
+(extend-to-fd System.Int64)
+(extend-to-fd clojure.lang.BigInteger)
 (extend-to-fd clojure.lang.BigInt)
 
 (declare interval)
@@ -230,13 +231,13 @@
 
 (deftype IntervalFD [lb ub]
   Object
-  (equals [_ o]
+  (Equals [_ o]
     (if (instance? IntervalFD o)
       (and (= lb (-lb o))
            (= ub (-ub o)))
       false))
 
-  (toString [this]
+  (ToString [this]
     (pr-str this))
 
   IMemberCount
@@ -306,7 +307,7 @@
              (core/<= imax jmax)) (interval jmin imax)
         (and (core/<= jmin imin)
              (core/<= jmax imax)) (interval imin jmax)
-        :else (throw (Error. (str "Interval intersection not defined " i " " j)))))
+        :else (throw (Exception. (str "Interval intersection not defined " i " " j)))))
 
      :else (intersection* this that)))
 
@@ -336,7 +337,7 @@
              (core/<= jmin imax)) (interval imin (dec jmin))
         (and (core/> imax jmax)
              (core/<= jmin imin)) (interval (inc jmax) imax)
-        :else (throw (Error. (str "Interval difference not defined " i " " j)))))
+        :else (throw (Exception. (str "Interval difference not defined " i " " j)))))
      
      :else (difference* this that)))
 
@@ -351,8 +352,8 @@
 (defn interval? [x]
   (instance? IntervalFD x))
 
-(defmethod print-method IntervalFD [x ^Writer writer]
-  (.write writer (str "<interval:" (-lb x) ".." (-ub x) ">")))
+(defmethod print-method IntervalFD [x ^TextWriter writer]
+  (.Write writer (str "<interval:" (-lb x) ".." (-ub x) ">")))
 
 (defn interval
   "Construct an interval for an assignment to a var. intervals may
@@ -486,7 +487,7 @@
       not-found))
 
   Object
-  (equals [this j]
+  (Equals [this j]
     (if (instance? MultiIntervalFD j)
       (let [i this
             [jmin jmax] (bounds j)]
@@ -580,8 +581,8 @@
      (let [is (into [] (concat (list i0 i1) ir))]
        (MultiIntervalFD. (max 0 (reduce min (map -lb is))) (max 0 (reduce max (map -ub is))) is))))
 
-(defmethod print-method MultiIntervalFD [x ^Writer writer]
-  (.write writer (str "<intervals:" (apply pr-str (:is x)) ">")))
+(defmethod print-method MultiIntervalFD [x ^TextWriter writer]
+  (.Write writer (str "<intervals:" (apply pr-str (:is x)) ">")))
 
 ;; =============================================================================
 ;; CLP(FD)
@@ -1089,7 +1090,7 @@
   ([() _] (<= 0 n))
   ([[h . t] n]
      (fresh [m]
-       (in m (interval 0 Integer/MAX_VALUE))
+       (in m (interval 0 System.Int32/MaxValue))
        (+ m 1 n)
        (bounded-listo t m))))
 

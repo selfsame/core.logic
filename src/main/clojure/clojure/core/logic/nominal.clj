@@ -3,7 +3,7 @@
   (:use [clojure.core.logic.protocols]
         [clojure.core.logic :exclude [fresh] :as l])
   (:require [clojure.pprint :as pp])
-  (:import [java.io Writer]
+  (:import [System.IO TextWriter]
            [clojure.core.logic LVar LCons]
            [clojure.core.logic.protocols IBindable ITreeTerm]))
 
@@ -82,12 +82,12 @@
   IBindable
 
   Object
-  (toString [_]
+  (ToString [_]
     (str "<nom:" (:name lvar) ">"))
-  (hashCode [_]
-    (.hashCode lvar))
-  (equals [this o]
-    (and (.. this getClass (isInstance o))
+  (GetHashCode [_]
+    (.GetHashCode lvar))
+  (Equals [this o]
+    (and (same-type? this o);(.. this getClass (isInstance o))
          (= lvar (:lvar o))))
 
   clojure.lang.IObj
@@ -135,8 +135,8 @@
       (let [~@(nom-binds noms)]
         (bind* a# ~@goals)))))
 
-(defmethod print-method Nom [x ^Writer writer]
-  (.write writer (str "<nom:" (:name x) ">")))
+(defmethod print-method Nom [x ^TextWriter writer]
+  (.Write writer (str "<nom:" (:name x) ">")))
 
 ;; =============================================================================
 ;; hash: ensure a nom is free in a term
@@ -146,7 +146,7 @@
 (defn- -hash [a x]
   (reify
     Object
-    (toString [_]
+    (ToString [_]
       (str a "#" x))
     IConstraintStep
     (-step [this s]
@@ -214,7 +214,7 @@
 (defn -suspc [v1 v2 swap]
   (reify
     Object
-    (toString [_]
+    (ToString [_]
       (str "suspc" v1 v2 swap))
     IConstraintStep
     (-step [this a]
@@ -312,17 +312,17 @@
 (defn tie? [x]
   (instance? clojure.core.logic.nominal.Tie x))
 
-(defmethod print-method Tie [x ^Writer writer]
-  (.write writer "[")
+(defmethod print-method Tie [x ^TextWriter writer]
+  (.Write writer "[")
   (print-method (:binding-nom x) writer)
-  (.write writer "] ")
+  (.Write writer "] ")
   (print-method (:body x) writer))
 
 (defn- pprint-tie [x]
   (pp/pprint-logical-block
-    (.write ^Writer *out* "[")
+    (.Write ^TextWriter *out* "[")
     (pp/write-out (:binding-nom x))
-    (.write ^Writer *out* "] ")
+    (.Write ^TextWriter *out* "] ")
     (pp/write-out (:body x))))
 
 (. pp/simple-dispatch addMethod Tie pprint-tie)
