@@ -1,4 +1,4 @@
-core.logic
+core.logic (clojure-CLR fork)
 ====
 
 A logic programming library for Clojure & ClojureScript. core.logic
