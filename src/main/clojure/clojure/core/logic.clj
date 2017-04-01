@@ -23,7 +23,11 @@
 
 (defn same-type? [a b] 
   ;(.IsInstanceOfType (.GetType a) b)
-  (.IsAssignableFrom (.GetType a) (.GetType b)))
+  (if (= (type a) nil)
+    (if (= (type b) nil) true false)
+    (if (= (type b) nil) 
+      false
+      (.IsAssignableFrom (.GetType a) (.GetType b)))))
 
 (defn assoc-meta [x k v]
   (with-meta x (assoc (meta x) k v)))
@@ -783,7 +787,7 @@
 
   (Equals [this o]
     (or (identical? this o)
-        (and (same-type? this d) ;(.. this getClass (isInstance o))
+        (and (same-type? this o) ;(.. this getClass (isInstance o))
              (loop [me this
                     you o]
                (cond

@@ -12,3 +12,4 @@ out/
 tests.js
 resources/
 *init.clj
+*.meta
